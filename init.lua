@@ -2,6 +2,10 @@
 
 vim.cmd("set tabstop=2 softtabstop=0 expandtab shiftwidth=2 smarttab")
 vim.cmd("set clipboard+=unnamedplus")
+vim.cmd("set colorcolumn=80")
+vim.wo.relativenumber = true
+vim.wo.number = true
+
 vim.g.mapleader = " "
 
 -- bootstrap lazy.nvim, LazyVim and your plugins
@@ -57,6 +61,22 @@ vim.cmd.colorscheme("catppuccin")
 
 -- Neotree
 vim.keymap.set('n', '<leader>n', ':Neotree filesystem reveal left<CR>', {})
+
+require("neo-tree").setup({
+  event_handlers = {
+
+    {
+      event = "file_opened",
+      handler = function(file_path)
+        -- auto close
+        -- vimc.cmd("Neotree close")
+        -- OR
+        require("neo-tree.command").execute({ action = "close" })
+      end
+    },
+
+  }
+})
 
 -- Must be before creating other maps:
 -- vim.g.mapleader = ' '
