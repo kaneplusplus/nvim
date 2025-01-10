@@ -29,7 +29,38 @@ local plugins = {
     'nvim-telescope/telescope.nvim', tag = '0.1.6',
     dependencies = { 'nvim-lua/plenary.nvim' }
   },
-  {"nvim-treesitter/nvim-treesitter", build = ":TSUpdate"},
+  {
+    "nvim-treesitter/nvim-treesitter",
+    build = ":TSUpdate",
+    config = function()
+      require("nvim-treesitter.configs").setup({
+        ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml" },
+        highlight = { enable = true },
+        indent = { enable = true },
+        incremental_selection = {
+          enable = true,
+          keymaps = {
+            init_selection = "gnn",
+            node_incremental = "grn",
+            scope_incremental = "grc",
+            node_decremental = "grm",
+          },
+        },
+        textobjects = {
+          select = {
+            enable = true,
+            lookahead = true,
+            keymaps = {
+              ["af"] = "@function.outer",
+              ["if"] = "@function.inner",
+              ["ac"] = "@class.outer",
+              ["ic"] = "@class.inner",
+            },
+          },
+        },
+      })
+    end,
+  },
   {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
@@ -39,52 +70,72 @@ local plugins = {
       "MunifTanjim/nui.nvim",
     }
   },
+  -- R support
   {
     "R-nvim/R.nvim",
     config = function ()
-      -- Create a table with the options to be passed to setup()
       local opts = {
         R_args = {"--quiet", "--no-save"},
         hook = {
-            after_config = function ()
-            -- This function will be called at the FileType event
-            -- of files supported by R.nvim. This is an
-            -- opportunity to create mappings local to buffers.
+          after_config = function ()
             if vim.o.syntax ~= "rbrowser" then
               vim.api.nvim_buf_set_keymap(0, "n", "<Enter>", "<Plug>RDSendLine", {})
               vim.api.nvim_buf_set_keymap(0, "v", "<Enter>", "<Plug>RSendSelection", {})
             end
-        end
-      },
-      min_editor_width = 72,
-      rconsole_width = 78,
-      disable_cmds = {
+          end
+        },
+        min_editor_width = 72,
+        rconsole_width = 78,
+        disable_cmds = {
           "RClearConsole",
           "RCustomStart",
           "RSPlot",
           "RSaveClose",
         },
       }
-      -- Check if the environment variable "R_AUTO_START" exists.
-      -- If using fish shell, you could put in your config.fish:
-      -- alias r "R_AUTO_START=true nvim"
       if vim.env.R_AUTO_START == "true" then
         opts.auto_start = 1
         opts.objbr_auto_start = true
       end
       require("r").setup(opts)
-      end,
+    end,
     lazy = false
   },
   "R-nvim/cmp-r",
   {
     "hrsh7th/nvim-cmp",
     config = function()
-      require("cmp").setup({ sources = {{ name = "cmp_r" }}})
-      require("cmp_r").setup({ })
+      require("cmp").setup({
+        sources = {{ name = "cmp_r" }},
+      })
+      require("cmp_r").setup({})
+    end,
+  },
+  -- Python and Julia support
+  {
+    "neovim/nvim-lspconfig",
+    config = function()
+      local lspconfig = require("lspconfig")
+      -- Python
+      lspconfig.pyright.setup({})
+      -- Julia
+      lspconfig.julials.setup({})
+    end,
+  },
+  {
+    "hrsh7th/nvim-cmp",
+    dependencies = { "hrsh7th/cmp-nvim-lsp" },
+    config = function()
+      local cmp = require("cmp")
+      cmp.setup({
+        sources = {
+          { name = "nvim_lsp" },
+        },
+      })
     end,
   },
 }
+
 local opts = {}
 
 -- Lazy
@@ -93,14 +144,13 @@ local builtin = require("telescope.builtin")
 vim.keymap.set('n', '<C-p>', builtin.find_files, {})
 
 -- treesitter
-local config = require("nvim-treesitter.configs")
-config.setup({
-  ensure_installed = {"lua", "r"},
-  highlight = {enable = true},
-  indent = {enable = true},
+require("nvim-treesitter.configs").setup({
+  ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml" },
+  highlight = { enable = true },
+  indent = { enable = true },
 })
 
--- catpuccin
+-- catppuccin
 require("catppuccin").setup()
 vim.cmd.colorscheme("catppuccin")
 
@@ -109,24 +159,12 @@ vim.keymap.set('n', '<leader>f', ':Neotree filesystem reveal left<CR>', {})
 
 require("neo-tree").setup({
   event_handlers = {
-
     {
       event = "file_opened",
       handler = function(file_path)
-        -- auto close
-        -- vimc.cmd("Neotree close")
-        -- OR
         require("neo-tree.command").execute({ action = "close" })
       end
     },
-
   }
 })
-
--- Must be before creating other maps:
--- vim.g.mapleader = ' '
--- vim.g.maplocalleader = ' '
-
-
--- Set your global variables and options above this line --
 
