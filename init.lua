@@ -120,6 +120,17 @@ local plugins = {
       lspconfig.pyright.setup({})
       -- Julia
       lspconfig.julials.setup({})
+      -- R
+      lspconfig.r_language_server.setup({
+      settings = {
+        r = {
+          lsp = {
+            rich_documentation = true,  -- Disable inline documentation
+            diagnostics = false,         -- Disable lintr messages
+          },
+        },
+      },
+    })
     end,
   },
   {
