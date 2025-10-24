@@ -1,40 +1,72 @@
--- syntax on
-
-vim.cmd("set tabstop=2 softtabstop=0 expandtab shiftwidth=2 smarttab")
-vim.cmd("set clipboard+=unnamedplus")
-vim.cmd("set colorcolumn=80")
-vim.wo.relativenumber = true
-vim.wo.number = true
-
+-- init.lua
 vim.g.mapleader = " "
+vim.g.maplocalleader = " "
 
--- bootstrap lazy.nvim, LazyVim and your plugins
--- require("config.lazy")
+-- Editor settings
+vim.opt.tabstop = 2
+vim.opt.softtabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.expandtab = true
+vim.opt.smarttab = true
+vim.opt.clipboard = "unnamedplus"
+vim.opt.colorcolumn = "80"
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.termguicolors = true
+
+-- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
-    lazypath,
+    "git", "clone", "--filter=blob:none", "--branch=stable",
+    "https://github.com/folke/lazy.nvim.git", lazypath,
   })
 end
 vim.opt.rtp:prepend(lazypath)
 
-local plugins = {
-  { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
+-- Plugins
+require("lazy").setup({
+  -- Colorscheme
   {
-    'nvim-telescope/telescope.nvim', tag = '0.1.6',
-    dependencies = { 'nvim-lua/plenary.nvim' }
+    "catppuccin/nvim",
+    name = "catppuccin",
+    priority = 1000,
+    config = function()
+      require("catppuccin").setup({
+        flavour = "mocha", -- latte, frappe, macchiato, mocha
+        integrations = {
+          treesitter = true,
+          neo_tree = true,
+          telescope = true,
+          cmp = true,
+          lsp_trouble = true,
+        },
+      })
+      vim.cmd.colorscheme("catppuccin")
+    end,
   },
+
+  -- Telescope
+  {
+    "nvim-telescope/telescope.nvim",
+    tag = "0.1.6",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    keys = {
+      { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
+      { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
+      { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
+      { "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
+    },
+  },
+
+  -- Treesitter
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
+    event = "BufReadPost",
     config = function()
       require("nvim-treesitter.configs").setup({
-        ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml" },
+        ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml", "bash" },
         highlight = { enable = true },
         indent = { enable = true },
         incremental_selection = {
@@ -61,6 +93,8 @@ local plugins = {
       })
     end,
   },
+
+  -- Neo-tree
   {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
@@ -68,114 +102,182 @@ local plugins = {
       "nvim-lua/plenary.nvim",
       "nvim-tree/nvim-web-devicons",
       "MunifTanjim/nui.nvim",
-    }
+    },
+    keys = {
+      { "<leader>e", "<cmd>Neotree toggle left<cr>", desc = "Toggle Neo-tree" },
+      { "<leader>o", "<cmd>Neotree focus<cr>", desc = "Focus Neo-tree" },
+    },
+    config = function()
+      require("neo-tree").setup({
+        close_if_last_window = true,
+        popup_border_style = "rounded",
+        enable_git_status = true,
+        enable_diagnostics = true,
+        filesystem = {
+          filtered_items = {
+            hide_dotfiles = false,
+            hide_gitignored = true,
+          },
+          follow_current_file = { enabled = true },
+          hijack_netrw_behavior = "open_current",
+        },
+        event_handlers = {
+          {
+            event = "file_opened",
+            handler = function()
+              require("neo-tree.command").execute({ action = "close" })
+            end,
+          },
+        },
+      })
+    end,
   },
-  -- R support
+
+  -- R.nvim
   {
     "R-nvim/R.nvim",
-    config = function ()
+    ft = { "r", "rmd", "rnoweb" },
+    lazy = false,
+    config = function()
       local opts = {
-        R_args = {"--quiet", "--no-save"},
+        R_args = { "--quiet", "--no-save" },
         hook = {
-          after_config = function ()
+          after_config = function()
             if vim.o.syntax ~= "rbrowser" then
               vim.api.nvim_buf_set_keymap(0, "n", "<Enter>", "<Plug>RDSendLine", {})
               vim.api.nvim_buf_set_keymap(0, "v", "<Enter>", "<Plug>RSendSelection", {})
             end
-          end
+          end,
         },
         min_editor_width = 72,
         rconsole_width = 78,
         disable_cmds = {
-          "RClearConsole",
-          "RCustomStart",
-          "RSPlot",
-          "RSaveClose",
+          "RClearConsole", "RCustomStart", "RSPlot", "RSaveClose",
         },
       }
+
       if vim.env.R_AUTO_START == "true" then
         opts.auto_start = 1
         opts.objbr_auto_start = true
       end
+
       require("r").setup(opts)
     end,
-    lazy = false
   },
-  "R-nvim/cmp-r",
-  {
-    "hrsh7th/nvim-cmp",
-    config = function()
-      require("cmp").setup({
-        sources = {{ name = "cmp_r" }},
-      })
-      require("cmp_r").setup({})
-    end,
-  },
-  -- Python and Julia support
+  { "R-nvim/cmp-r", ft = { "r", "rmd", "quarto" } },
+
+  -- LSP & Completion
   {
     "neovim/nvim-lspconfig",
+    event = "BufReadPre",
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+    },
     config = function()
       local lspconfig = require("lspconfig")
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+
       -- Python
-      lspconfig.pyright.setup({})
+      lspconfig.pyright.setup({ capabilities = capabilities })
+
       -- Julia
-      lspconfig.julials.setup({})
+      lspconfig.julials.setup({ capabilities = capabilities })
+
       -- R
       lspconfig.r_language_server.setup({
-      settings = {
-        r = {
-          lsp = {
-            rich_documentation = true,  -- Disable inline documentation
-            diagnostics = false,         -- Disable lintr messages
+        capabilities = capabilities,
+        settings = {
+          r = {
+            lsp = {
+              rich_documentation = false,
+              diagnostics = false,
+            },
           },
         },
-      },
-    })
+      })
+
+      -- LSP Keymaps
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+        callback = function(ev)
+          local opts = { buffer = ev.buf }
+          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+          vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+          vim.keymap.set("n", "<leader>gr", vim.lsp.buf.references, opts)
+        end,
+      })
     end,
   },
+
+  -- nvim-cmp
   {
     "hrsh7th/nvim-cmp",
-    dependencies = { "hrsh7th/cmp-nvim-lsp" },
+    event = "InsertEnter",
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "hrsh7th/cmp-path",
+      "R-nvim/cmp-r",
+    },
     config = function()
       local cmp = require("cmp")
       cmp.setup({
-        sources = {
-          { name = "nvim_lsp" },
+        sources = cmp.config.sources({
+          { name = "nvim_lsp", priority = 1000 },
+          { name = "cmp_r", priority = 900, keyword_length = 3 },
+          { name = "buffer", priority = 500 },
+          { name = "path", priority = 250 },
+        }),
+        mapping = cmp.mapping.preset.insert({
+          ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+          ["<C-f>"] = cmp.mapping.scroll_docs(4),
+          ["<C-Space>"] = cmp.mapping.complete(),
+          ["<CR>"] = cmp.mapping.confirm({ select = true }),
+          ["<Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_next_item()
+            else
+              fallback()
+            end
+          end, { "i", "s" }),
+          ["<S-Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_prev_item()
+            else
+              fallback()
+            end
+          end, { "i", "s" }),
+        }),
+        formatting = {
+          format = function(entry, vim_item)
+            vim_item.menu = ({
+              nvim_lsp = "[LSP]",
+              cmp_r = "[R]",
+              buffer = "[Buf]",
+              path = "[Path]",
+            })[entry.source.name]
+            return vim_item
+          end,
         },
       })
+
+      -- Enable cmp-r
+      require("cmp_r").setup({})
     end,
   },
-}
-
-local opts = {}
-
--- Lazy
-require("lazy").setup(plugins, opts)
-local builtin = require("telescope.builtin")
-vim.keymap.set('n', '<C-p>', builtin.find_files, {})
-
--- treesitter
-require("nvim-treesitter.configs").setup({
-  ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml" },
-  highlight = { enable = true },
-  indent = { enable = true },
-})
-
--- catppuccin
-require("catppuccin").setup()
-vim.cmd.colorscheme("catppuccin")
-
--- Neotree
-vim.keymap.set('n', '<leader>f', ':Neotree filesystem reveal left<CR>', {})
-
-require("neo-tree").setup({
-  event_handlers = {
-    {
-      event = "file_opened",
-      handler = function(file_path)
-        require("neo-tree.command").execute({ action = "close" })
-      end
+}, {
+  install = { colorscheme = { "catppuccin" } },
+  checker = { enabled = true },
+  performance = {
+    rtp = {
+      disabled_plugins = {
+        "gzip", "tarPlugin", "tohtml", "zipPlugin",
+      },
     },
-  }
+  },
 })
 
+-- Optional: Load R.nvim help on startup if needed
+-- vim.cmd("silent! helptags ALL")
