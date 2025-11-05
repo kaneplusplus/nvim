@@ -166,51 +166,52 @@ require("lazy").setup({
   },
   { "R-nvim/cmp-r", ft = { "r", "rmd", "quarto" } },
 
-  -- LSP & Completion
-  {
-    "neovim/nvim-lspconfig",
-    event = "BufReadPre",
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
-    },
-    config = function()
-      local lspconfig = require("lspconfig")
-      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+-- LSP & Completion
+{
+  "neovim/nvim-lspconfig",
+  event = "BufReadPre",
+  dependencies = {
+    "hrsh7th/cmp-nvim-lsp",
+  },
+  config = function()
+    local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-      -- Python
-      lspconfig.pyright.setup({ capabilities = capabilities })
+    -- Python (pyright)
+    vim.lsp.config("pyright", { capabilities = capabilities })
+    vim.lsp.enable("pyright")
 
-      -- Julia
-      lspconfig.julials.setup({ capabilities = capabilities })
+    -- Julia (julials)
+    vim.lsp.config("julials", { capabilities = capabilities })
+    vim.lsp.enable("julials")
 
-      -- R
-      lspconfig.r_language_server.setup({
-        capabilities = capabilities,
-        settings = {
-          r = {
-            lsp = {
-              rich_documentation = false,
-              diagnostics = false,
-            },
+    -- R (r_language_server)
+    vim.lsp.config("r_language_server", {
+      capabilities = capabilities,
+      settings = {
+        r = {
+          lsp = {
+            rich_documentation = false,
+            diagnostics = false,
           },
         },
-      })
+      },
+    })
+    vim.lsp.enable("r_language_server")
 
-      -- LSP Keymaps
-      vim.api.nvim_create_autocmd("LspAttach", {
-        group = vim.api.nvim_create_augroup("UserLspConfig", {}),
-        callback = function(ev)
-          local opts = { buffer = ev.buf }
-          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-          vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-          vim.keymap.set("n", "<leader>gr", vim.lsp.buf.references, opts)
-        end,
-      })
-    end,
-  },
-
+    -- LSP Keymaps (unchanged)
+    vim.api.nvim_create_autocmd("LspAttach", {
+      group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+      callback = function(ev)
+        local opts = { buffer = ev.buf }
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+        vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+        vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+        vim.keymap.set("n", "<leader>gr", vim.lsp.buf.references, opts)
+      end,
+    })
+  end,
+},
   -- nvim-cmp
   {
     "hrsh7th/nvim-cmp",
@@ -224,6 +225,9 @@ require("lazy").setup({
     config = function()
       local cmp = require("cmp")
       cmp.setup({
+        completion = {
+          autocomplete = false,  -- Disable automatic popup (prevents "completion")
+        },
         sources = cmp.config.sources({
           { name = "nvim_lsp", priority = 1000 },
           { name = "cmp_r", priority = 900, keyword_length = 3 },
@@ -233,8 +237,8 @@ require("lazy").setup({
         mapping = cmp.mapping.preset.insert({
           ["<C-b>"] = cmp.mapping.scroll_docs(-4),
           ["<C-f>"] = cmp.mapping.scroll_docs(4),
-          ["<C-Space>"] = cmp.mapping.complete(),
-          ["<CR>"] = cmp.mapping.confirm({ select = true }),
+          ["<C-Space>"] = cmp.mapping.complete(),  -- Manually trigger suggestions
+          ["<CR>"] = cmp.mapping.confirm({ select = false }),  -- Require explicit selection; no auto-insert
           ["<Tab>"] = cmp.mapping(function(fallback)
             if cmp.visible() then
               cmp.select_next_item()
