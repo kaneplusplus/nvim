@@ -49,7 +49,7 @@ require("lazy").setup({
   -- Telescope
   {
     "nvim-telescope/telescope.nvim",
-    tag = "0.1.6",
+    tag = "0.1.8",
     dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
       { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
@@ -64,6 +64,9 @@ require("lazy").setup({
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
     event = "BufReadPost",
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter-textobjects",
+    },
     config = function()
       require("nvim-treesitter.configs").setup({
         ensure_installed = { "lua", "r", "python", "julia", "markdown", "rnoweb", "yaml", "bash" },
@@ -136,8 +139,7 @@ require("lazy").setup({
   -- R.nvim
   {
     "R-nvim/R.nvim",
-    ft = { "r", "rmd", "rnoweb" },
-    lazy = false,
+    ft = { "r", "rmd", "quarto", "rnoweb" },
     config = function()
       local opts = {
         R_args = { "--quiet", "--no-save" },
@@ -154,6 +156,8 @@ require("lazy").setup({
         disable_cmds = {
           "RClearConsole", "RCustomStart", "RSPlot", "RSaveClose",
         },
+        -- Run R in a tmux split to prevent freezing Neovim UI
+        external_term = "tmux split-window -d -v -l 33%",
       }
 
       if vim.env.R_AUTO_START == "true" then
@@ -164,7 +168,16 @@ require("lazy").setup({
       require("r").setup(opts)
     end,
   },
-  { "R-nvim/cmp-r", ft = { "r", "rmd", "quarto" } },
+
+  -- Claude Code
+  {
+    "coder/claudecode.nvim",
+    config = true,
+    keys = {
+      { "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
+      { "<leader>af", "<cmd>ClaudeCodeFocus<cr>", desc = "Focus Claude" },
+    },
+  },
 
 -- LSP & Completion
 {
@@ -220,7 +233,6 @@ require("lazy").setup({
       "hrsh7th/cmp-nvim-lsp",
       "hrsh7th/cmp-buffer",
       "hrsh7th/cmp-path",
-      "R-nvim/cmp-r",
     },
     config = function()
       local cmp = require("cmp")
@@ -230,7 +242,6 @@ require("lazy").setup({
         },
         sources = cmp.config.sources({
           { name = "nvim_lsp", priority = 1000 },
-          { name = "cmp_r", priority = 900, keyword_length = 3 },
           { name = "buffer", priority = 500 },
           { name = "path", priority = 250 },
         }),
@@ -258,7 +269,6 @@ require("lazy").setup({
           format = function(entry, vim_item)
             vim_item.menu = ({
               nvim_lsp = "[LSP]",
-              cmp_r = "[R]",
               buffer = "[Buf]",
               path = "[Path]",
             })[entry.source.name]
@@ -267,8 +277,6 @@ require("lazy").setup({
         },
       })
 
-      -- Enable cmp-r
-      require("cmp_r").setup({})
     end,
   },
 }, {
