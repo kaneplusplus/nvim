@@ -157,7 +157,7 @@ require("lazy").setup({
           "RClearConsole", "RCustomStart", "RSPlot", "RSaveClose",
         },
         -- Run R in a tmux split to prevent freezing Neovim UI
-        external_term = "tmux split-window -d -v -l 33%",
+        external_term = "tmux split-window -d -h -l 50%",
       }
 
       if vim.env.R_AUTO_START == "true" then
@@ -166,6 +166,34 @@ require("lazy").setup({
       end
 
       require("r").setup(opts)
+    end,
+  },
+
+  -- Python/Julia REPL via tmux (vim-slime)
+  {
+    "jpalardy/vim-slime",
+    ft = { "python", "julia" },
+    init = function()
+      vim.g.slime_target = "tmux"
+      vim.g.slime_default_config = { socket_name = "default", target_pane = "{right}" }
+      vim.g.slime_dont_ask_default = 1
+      vim.g.slime_bracketed_paste = 1
+    end,
+    config = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = { "python", "julia" },
+        callback = function(ev)
+          vim.keymap.set("n", "<Enter>", "<Plug>SlimeLineSend", { buffer = true })
+          vim.keymap.set("v", "<Enter>", "<Plug>SlimeRegionSend", { buffer = true })
+
+          local repl_cmd = ev.match == "python"
+            and (vim.fn.executable("ipython") == 1 and "ipython" or "python3")
+            or "julia"
+          vim.keymap.set("n", "<localleader>rf", function()
+            vim.fn.system("tmux split-window -d -h -l 50% '" .. repl_cmd .. "'")
+          end, { buffer = true, desc = "Start " .. repl_cmd .. " REPL" })
+        end,
+      })
     end,
   },
 
